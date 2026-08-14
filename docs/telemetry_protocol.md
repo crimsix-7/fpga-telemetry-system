@@ -1,173 +1,237 @@
-# Virtual CubeSat Telemetry Protocol
+# Telemetry Protocol
 
 ## Overview
 
-The FPGA telemetry subsystem generates a fixed-length 8-byte telemetry packet.
+The project uses a fixed-length **8-byte telemetry packet**.
 
-Each packet contains:
+```text
+Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+HEADER   COUNT    TEMP     BATTERY  SYS      SENSOR   CRC_H    CRC_L
+```
 
-- synchronization/header byte
-- packet sequence number
-- temperature measurement
-- battery voltage measurement
-- system status flags
-- sensor status flags
-- 16-bit CRC
+Total length: **8 bytes / 64 bits**
 
-## Packet Structure
+## Packet Definition
 
-| Byte | Field | Size | Description |
-|---|---|---:|---|
-| 0 | HEADER | 8 bits | Fixed value `0xA5` identifying the start of a packet |
-| 1 | PACKET_COUNT | 8 bits | Sequence number from 0–255 |
-| 2 | TEMPERATURE | 8 bits | Temperature in degrees Celsius |
-| 3 | BATTERY | 8 bits | Battery voltage encoded in decivolts |
-| 4 | SYSTEM_STATUS | 8 bits | System health/status bit field |
-| 5 | SENSOR_STATUS | 8 bits | Sensor health bit field |
-| 6 | CRC_HIGH | 8 bits | Upper byte of CRC-16 |
-| 7 | CRC_LOW | 8 bits | Lower byte of CRC-16 |
-
-Total packet size: **64 bits / 8 bytes**
+| Byte | Field | Width | Encoding |
+|---:|---|---:|---|
+| 0 | `HEADER` | 8 bits | Fixed `0xA5` |
+| 1 | `PACKET_COUNT` | 8 bits | Unsigned sequence field, `0–255` |
+| 2 | `TEMPERATURE` | 8 bits | Unsigned integer °C |
+| 3 | `BATTERY` | 8 bits | Battery voltage × 10 |
+| 4 | `SYSTEM_STATUS` | 8 bits | System-health bit field |
+| 5 | `SENSOR_STATUS` | 8 bits | Sensor-health bit field |
+| 6 | `CRC_HIGH` | 8 bits | CRC bits `[15:8]` |
+| 7 | `CRC_LOW` | 8 bits | CRC bits `[7:0]` |
 
 ## Header
 
-The first byte of every telemetry packet is:
+Every packet begins with:
 
-`0xA5`
+```text
+0xA5
+```
 
 Binary:
 
-`10100101`
+```text
+1010 0101
+```
 
-This allows the receiver to identify the beginning of a telemetry packet.
+The header provides a fixed synchronization marker for the packet format.
 
-## Packet Counter
+## Packet Count
 
-`PACKET_COUNT` is an unsigned 8-bit sequence number.
+`PACKET_COUNT` is an 8-bit sequence field.
 
-Range:
+```text
+0 ... 255
+```
 
-`0–255`
+A producer may increment it once per packet and wrap from `255` to `0`. Missing sequence values can therefore be used by a receiver to identify potential packet loss.
 
-After packet 255, the counter wraps back to 0.
+In the current integrated RTL, `packet_count` is supplied as an input to `telemetry_system`; the top-level telemetry system does not increment it internally.
 
-The sequence number allows the ground station to detect missing packets.
+## Temperature
 
-Example:
-
-`41, 42, 43, 45`
-
-indicates that packet `44` was not received.
-
-## Temperature Encoding
-
-Temperature is initially represented as an unsigned integer in degrees Celsius.
+`TEMPERATURE` is currently an **unsigned 8-bit integer in degrees Celsius**.
 
 Example:
 
-- `22 °C` → decimal `22`
-- decimal `22` → hexadecimal `0x16`
+```text
+22 °C = decimal 22 = 0x16
+```
 
-Signed and fractional temperature support may be added later.
+Current representable range:
 
-## Battery Voltage Encoding
+```text
+0 ... 255 °C
+```
 
-Battery voltage is represented in decivolts.
+Negative and fractional temperatures are outside the current protocol version.
 
-Formula:
+## Battery Voltage
 
-`encoded_battery = voltage × 10`
+Battery voltage is encoded in **decivolts**:
+
+```text
+encoded = voltage × 10
+```
 
 Example:
 
-`7.8 V × 10 = 78`
+```text
+7.8 V -> 78 -> 0x4E
+```
 
-Therefore:
+The decoder reconstructs the displayed value with:
 
-- Physical voltage: `7.8 V`
-- Encoded decimal value: `78`
-- Encoded hexadecimal value: `0x4E`
+```text
+voltage = encoded / 10
+```
 
-The ground station reconstructs the physical value using:
-
-`voltage = encoded_battery / 10`
+With one unsigned byte, the representable range is `0.0–25.5 V`.
 
 ## System Status
 
-`SYSTEM_STATUS` is an 8-bit bit field.
+`SYSTEM_STATUS` uses individual bits:
 
-| Bit | Meaning |
-|---:|---|
-| 0 | FPGA healthy |
-| 1 | Sensor subsystem healthy |
-| 2 | Communications healthy |
-| 3 | Watchdog active |
-| 4 | Low battery warning |
-| 5 | Overtemperature warning |
-| 6 | Reserved |
-| 7 | Reserved |
+| Bit | Meaning | `1` means |
+|---:|---|---|
+| 0 | FPGA healthy | Healthy |
+| 1 | Sensor subsystem healthy | Healthy |
+| 2 | Communications healthy | Healthy |
+| 3 | Watchdog active | Active |
+| 4 | Low battery | Warning active |
+| 5 | Overtemperature | Warning active |
+| 6 | Reserved | — |
+| 7 | Reserved | — |
 
-Normal system status:
+Nominal status:
 
-`00001111`
+```text
+0000 1111 = 0x0F
+```
 
-Hexadecimal:
+Low battery and overtemperature simultaneously asserted:
 
-`0x0F`
+```text
+0011 1111 = 0x3F
+```
 
 ## Sensor Status
 
-`SENSOR_STATUS` is an 8-bit bit field.
+`SENSOR_STATUS` uses:
 
-| Bit | Meaning |
-|---:|---|
-| 0 | Temperature sensor healthy |
-| 1 | IMU healthy |
-| 2 | GPS healthy |
-| 3 | Power monitor healthy |
-| 4 | Reserved |
-| 5 | Reserved |
-| 6 | Reserved |
-| 7 | Reserved |
+| Bit | Meaning | `1` means |
+|---:|---|---|
+| 0 | Temperature sensor | Healthy |
+| 1 | IMU | Healthy |
+| 2 | GPS | Healthy |
+| 3 | Power monitor | Healthy |
+| 4–7 | Reserved | — |
 
 All sensors healthy:
 
-`00001111`
+```text
+0000 1111 = 0x0F
+```
 
-Hexadecimal:
+GPS failed while the other defined sensors remain healthy:
 
-`0x0F`
+```text
+0000 1011 = 0x0B
+```
 
-## CRC
+## CRC-16
 
-Bytes 6 and 7 contain a 16-bit CRC used to detect corrupted telemetry packets.
+CRC is calculated over **bytes 0 through 5 only**. Bytes 6 and 7 carry the resulting CRC and are not included in the calculation.
 
-The CRC implementation and polynomial will be defined when the CRC subsystem is developed.
+The implementation uses **CRC-16/CCITT-FALSE**:
 
-CRC calculation is not part of the initial packetizer implementation.
-
-## Example Packet
-
-Example spacecraft state:
-
-- Packet number: `4`
-- Temperature: `22 °C`
-- Battery voltage: `7.8 V`
-- System status: healthy
-- Sensor status: healthy
-
-The packet before CRC calculation is:
-
-`A5 04 16 4E 0F 0F XX XX`
-
-Where:
-
-| Value | Meaning |
+| Parameter | Value |
 |---|---|
-| `A5` | Header |
-| `04` | Packet number 4 |
-| `16` | 22 °C |
-| `4E` | 7.8 V |
-| `0F` | Normal system status |
-| `0F` | All sensors healthy |
-| `XX XX` | CRC to be implemented later |
+| Width | 16 bits |
+| Polynomial | `0x1021` |
+| Initial value | `0xFFFF` |
+| Reflect input | No |
+| Reflect output | No |
+| Final XOR | `0x0000` |
+
+The CRC is transmitted high byte first:
+
+```text
+CRC_HIGH, CRC_LOW
+```
+
+Reference vector:
+
+```text
+ASCII "123456789" -> 0x29B1
+```
+
+## UART Framing
+
+Each packet byte is serialized using UART **8-N-1** framing:
+
+```text
+Idle HIGH
+Start bit: 0
+Data bits: 8, LSB first
+Parity: none
+Stop bit: 1
+```
+
+## Example: Nominal Packet
+
+Input values:
+
+```text
+Packet Count:   4
+Temperature:    22 °C
+Battery:        7.8 V
+System Status:  0x0F
+Sensor Status:  0x0F
+```
+
+Payload:
+
+```text
+A5 04 16 4E 0F 0F
+```
+
+CRC:
+
+```text
+0xFE7C
+```
+
+Complete packet:
+
+```text
+A5 04 16 4E 0F 0F FE 7C
+```
+
+## Example: Fault Packet
+
+Input values:
+
+```text
+Packet Count:       5
+Temperature:        30 °C
+Battery:            7.9 V
+System Status:      0x3F
+Sensor Status:      0x0B
+```
+
+CRC:
+
+```text
+0xA3CF
+```
+
+Complete packet:
+
+```text
+A5 05 1E 4F 3F 0B A3 CF
+```
