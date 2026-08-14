@@ -1,0 +1,10 @@
+.venv/
+sim_build/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+dump.fst
+results.xml
+
+.vscode/

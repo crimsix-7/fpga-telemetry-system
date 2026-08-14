@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Virtual CubeSat Ground Station</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+
+            background: #070b14;
+            color: #eef3ff;
+
+        }
+
+
+        .page {
+
+            width: min(1200px, 92%);
+            margin: 0 auto;
+            padding: 40px 0 60px;
+
+        }
+
+
+        header {
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            margin-bottom: 35px;
+
+        }
+
+
+        .title h1 {
+
+            margin: 0;
+            font-size: 30px;
+
+        }
+
+
+        .title p {
+
+            margin: 7px 0 0;
+            color: #8f9bb3;
+
+        }
+
+
+        .connection {
+
+            display: flex;
+            align-items: center;
+            gap: 9px;
+
+            padding: 9px 14px;
+
+            border: 1px solid #1d2a40;
+            border-radius: 999px;
+
+            background: #0d1422;
+
+            font-size: 14px;
+
+        }
+
+
+        .connection-dot {
+
+            width: 9px;
+            height: 9px;
+
+            border-radius: 50%;
+
+            background: #48d597;
+
+            box-shadow:
+                0 0 10px #48d597;
+
+        }
+
+
+        .grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 18px;
+
+        }
+
+
+        .card {
+
+            background: #0d1422;
+
+            border:
+                1px solid #1b2940;
+
+            border-radius: 14px;
+
+            padding: 22px;
+
+        }
+
+
+        .card-title {
+
+            margin-bottom: 12px;
+
+            color: #8f9bb3;
+
+            font-size: 13px;
+            letter-spacing: 1px;
+
+            text-transform: uppercase;
+
+        }
+
+
+        .value {
+
+            font-size: 34px;
+            font-weight: 600;
+
+        }
+
+
+        .unit {
+
+            color: #8f9bb3;
+            font-size: 16px;
+
+        }
+
+
+        .wide {
+
+            grid-column:
+                span 2;
+
+        }
+
+
+        .full {
+
+            grid-column:
+                1 / -1;
+
+        }
+
+
+        .status-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 10px;
+
+            margin-top: 15px;
+
+        }
+
+
+        .status {
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            padding: 12px 14px;
+
+            background: #080e19;
+
+            border:
+                1px solid #172337;
+
+            border-radius: 9px;
+
+        }
+
+
+        .badge {
+
+            padding: 4px 8px;
+
+            border-radius: 6px;
+
+            font-size: 12px;
+            font-weight: 600;
+
+        }
+
+
+        .good {
+
+            color: #59e3a6;
+            background:
+                rgba(89, 227, 166, 0.1);
+
+        }
+
+
+        .bad {
+
+            color: #ff7373;
+            background:
+                rgba(255, 115, 115, 0.1);
+
+        }
+
+
+        .packet {
+
+            display: flex;
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+            margin-top: 15px;
+
+        }
+
+
+        .packet-byte {
+
+            min-width: 57px;
+
+            padding: 12px;
+
+            text-align: center;
+
+            font-family:
+                Consolas,
+                monospace;
+
+            background: #080e19;
+
+            border:
+                1px solid #23344f;
+
+            border-radius: 8px;
+
+        }
+
+
+        .packet-byte:first-child {
+
+            border-color: #659cff;
+
+            color: #8db5ff;
+
+        }
+
+
+        .crc {
+
+            color: #ba9cff;
+
+        }
+
+
+        .timestamp {
+
+            margin-top: 12px;
+
+            color: #65728a;
+
+            font-size: 12px;
+
+        }
+
+
+        @media (
+            max-width: 800px
+        ) {
+
+            .grid {
+
+                grid-template-columns:
+                    1fr;
+
+            }
+
+
+            .wide,
+            .full {
+
+                grid-column:
+                    auto;
+
+            }
+
+
+            header {
+
+                align-items:
+                    flex-start;
+
+                gap: 20px;
+
+                flex-direction:
+                    column;
+
+            }
+
+        }
+
+        .fault-controls {
+
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+
+            margin-top: 15px;
+        }
+
+
+        .control-button {
+
+            padding: 10px 16px;
+
+            border: 1px solid #293a56;
+            border-radius: 8px;
+
+            background: #101a2b;
+            color: #eef3ff;
+
+            cursor: pointer;
+
+            font-weight: 600;
+        }
+
+
+        .control-button:hover {
+
+            background: #16243a;
+        }
+
+
+        .danger-button {
+
+            border-color: #713939;
+        }
+
+
+        .reset-button {
+
+            border-color: #315947;
+        }
+
+
+        .crc-error {
+
+            color: #ff7373;
+        }
+
+
+        .error-message {
+
+            margin-top: 12px;
+
+            color: #ff7373;
+
+            font-family: Consolas, monospace;
+
+            font-size: 13px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="page">
+
+
+    <header>
+
+        <div class="title">
+
+            <h1>
+                CubeSat Ground Station
+            </h1>
+
+            <p>
+                FPGA telemetry monitoring and verification
+            </p>
+
+        </div>
+
+
+        <div class="connection">
+
+            <div class="connection-dot"></div>
+
+            TELEMETRY ONLINE
+
+        </div>
+
+    </header>
+
+
+    <div class="grid">
+
+        <div class="card full">
+
+            <div class="card-title">
+                Fault Injection
+            </div>
+
+            <div class="fault-controls">
+
+                <button
+                    class="control-button danger-button"
+                    id="gps-fault"
+                >
+                    Toggle GPS Failure
+                </button>
+
+                <button
+                    class="control-button danger-button"
+                    id="battery-fault"
+                >
+                    Toggle Low Battery
+                </button>
+
+                <button
+                    class="control-button danger-button"
+                    id="temperature-fault"
+                >
+                    Toggle Overtemperature
+                </button>
+
+                <button
+                    class="control-button danger-button"
+                    id="corruption-fault"
+                >
+                    Toggle Packet Corruption
+                </button>
+
+                <button
+                    class="control-button reset-button"
+                    id="reset-faults"
+                >
+                    Recover System
+                </button>
+
+            </div>
+
+            <div
+                class="error-message"
+                id="telemetry-error"
+            ></div>
+
+        </div>
+
+        <div class="card">
+
+            <div class="card-title">
+                Packet
+            </div>
+
+            <div class="value"
+                 id="packet-count">
+
+                --
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-title">
+                Temperature
+            </div>
+
+            <div class="value">
+
+                <span id="temperature">
+                    --
+                </span>
+
+                <span class="unit">
+                    °C
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-title">
+                Battery
+            </div>
+
+            <div class="value">
+
+                <span id="battery">
+                    --
+                </span>
+
+                <span class="unit">
+                    V
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="card wide">
+
+            <div class="card-title">
+                System Status
+            </div>
+
+
+            <div
+                class="status-grid"
+                id="system-status"
+            ></div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-title">
+                CRC-16
+            </div>
+
+            <div
+                class="value crc"
+                id="crc"
+            >
+                ----
+            </div>
+
+        </div>
+
+
+        <div class="card full">
+
+            <div class="card-title">
+                Sensor Health
+            </div>
+
+
+            <div
+                class="status-grid"
+                id="sensor-status"
+            ></div>
+
+        </div>
+
+
+        <div class="card full">
+
+            <div class="card-title">
+                Raw Telemetry Packet
+            </div>
+
+
+            <div
+                class="packet"
+                id="raw-packet"
+            ></div>
+
+
+            <div
+                class="timestamp"
+                id="last-update"
+            ></div>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+<script>
+
+    function statusBadge(
+        name,
+        healthy,
+        inverted = false
+    ) {
+
+        const good =
+            inverted
+                ? !healthy
+                : healthy;
+
+
+        return `
+
+            <div class="status">
+
+                <span>
+                    ${name}
+                </span>
+
+                <span
+                    class="
+                        badge
+                        ${good ? "good" : "bad"}
+                    "
+                >
+
+                    ${
+                        good
+                            ? "NOMINAL"
+                            : "FAULT"
+                    }
+
+                </span>
+
+            </div>
+
+        `;
+
+    }
+
+
+    async function updateTelemetry() {
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/telemetry"
+                );
+
+
+            const data =
+                await response.json();
+
+
+            document
+                .getElementById(
+                    "packet-count"
+                )
+                .textContent =
+                    data.packet_count;
+
+
+            document
+                .getElementById(
+                    "temperature"
+                )
+                .textContent =
+                    data.temperature_c;
+
+
+            document
+                .getElementById(
+                    "battery"
+                )
+                .textContent =
+                    data.battery_v
+                        .toFixed(1);
+
+
+            const crcElement =
+                document.getElementById("crc");
+
+
+            const errorElement =
+                document.getElementById(
+                    "telemetry-error"
+                );
+
+
+            if (data.crc_valid) {
+
+                crcElement.textContent =
+                    "0x" +
+                    data.crc
+                        .toString(16)
+                        .toUpperCase()
+                        .padStart(4, "0");
+
+                crcElement.classList.remove(
+                    "crc-error"
+                );
+
+                errorElement.textContent = "";
+
+            }
+
+            else {
+
+                crcElement.textContent =
+                    "CRC ERROR";
+
+                crcElement.classList.add(
+                    "crc-error"
+                );
+
+                errorElement.textContent =
+                    data.error;
+
+            }
+
+
+            if (data.system && data.sensors) {
+
+                const system =
+                    data.system;
+
+
+                document
+                    .getElementById(
+                        "system-status"
+                    )
+                    .innerHTML =
+
+                        statusBadge(
+                            "FPGA",
+                            system.fpga_healthy
+                        )
+
+                        +
+
+                        statusBadge(
+                            "Sensor Subsystem",
+                            system.sensor_subsystem_healthy
+                        )
+
+                        +
+
+                        statusBadge(
+                            "Communications",
+                            system.comms_healthy
+                        )
+
+                        +
+
+                        statusBadge(
+                            "Watchdog",
+                            system.watchdog_active
+                        )
+
+                        +
+
+                        statusBadge(
+                            "Low Battery",
+                            system.low_battery,
+                            true
+                        )
+
+                        +
+
+                        statusBadge(
+                            "Overtemperature",
+                            system.overtemperature,
+                            true
+                        );
+
+
+                const sensors =
+                    data.sensors;
+
+
+                document
+                    .getElementById(
+                        "sensor-status"
+                    )
+                    .innerHTML =
+
+                        statusBadge(
+                            "Temperature Sensor",
+                            sensors.temperature_sensor
+                        )
+
+                        +
+
+                        statusBadge(
+                            "IMU",
+                            sensors.imu
+                        )
+
+                        +
+
+                        statusBadge(
+                            "GPS",
+                            sensors.gps
+                        )
+
+                        +
+
+                        statusBadge(
+                            "Power Monitor",
+                            sensors.power_monitor
+                        );
+
+            }
+
+
+            const packetElement =
+                document.getElementById(
+                    "raw-packet"
+                );
+
+
+            packetElement.innerHTML = "";
+
+
+            data.raw_packet
+                .forEach(
+                    (byte, index) => {
+
+                        const element =
+                            document.createElement(
+                                "div"
+                            );
+
+
+                        element.className =
+                            "packet-byte";
+
+
+                        if (
+                            index === 6 ||
+                            index === 7
+                        ) {
+
+                            element.classList.add(
+                                "crc"
+                            );
+
+                        }
+
+
+                        element.textContent =
+                            byte;
+
+
+                        packetElement.appendChild(
+                            element
+                        );
+
+                    }
+                );
+
+
+            document
+                .getElementById(
+                    "last-update"
+                )
+                .textContent =
+
+                    "Last telemetry update: "
+
+                    +
+
+                    new Date()
+                        .toLocaleTimeString();
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Telemetry update failed:",
+                error
+            );
+
+        }
+
+    }
+
+
+    updateTelemetry();
+
+
+    setInterval(
+        updateTelemetry,
+        1000
+    );
+
+
+    async function triggerFault(endpoint) {
+
+        await fetch(
+            endpoint,
+            {
+                method: "POST"
+            }
+        );
+
+        await updateTelemetry();
+
+    }
+
+
+    document
+        .getElementById("gps-fault")
+        .addEventListener(
+            "click",
+            () =>
+                triggerFault(
+                    "/api/fault/gps"
+                )
+        );
+
+
+    document
+        .getElementById("battery-fault")
+        .addEventListener(
+            "click",
+            () =>
+                triggerFault(
+                    "/api/fault/low-battery"
+                )
+        );
+
+
+    document
+        .getElementById("temperature-fault")
+        .addEventListener(
+            "click",
+            () =>
+                triggerFault(
+                    "/api/fault/overtemperature"
+                )
+        );
+
+
+    document
+        .getElementById("corruption-fault")
+        .addEventListener(
+            "click",
+            () =>
+                triggerFault(
+                    "/api/fault/corruption"
+                )
+        );
+
+
+    document
+        .getElementById("reset-faults")
+        .addEventListener(
+            "click",
+            () =>
+                triggerFault(
+                    "/api/reset"
+                )
+        );
+
+</script>
+
+
+</body>
+
+</html>
